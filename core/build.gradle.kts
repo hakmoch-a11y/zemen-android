@@ -1,34 +1,64 @@
 plugins {
     kotlin("jvm")
+    `maven-publish`
 }
 
-// This module has NO Android Gradle Plugin, NO Android dependency at
-// all — that's the whole point (see android-sdk/README.md's "Why two
-// modules"). It's also the only module that was actually compiled and
-// unit-tested in the environment this SDK was originally built in; the
-// android module could not be — see the README's verification section.
-
-dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
-
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
-}
+group = rootProject.group
+version = providers.gradleProperty("VERSION_NAME")
+    .orElse(rootProject.version.toString())
+    .get()
 
 kotlin {
     jvmToolchain(17)
 }
 
+java {
+    withSourcesJar()
+}
 
-plugins.apply("maven-publish")
+dependencies {
+    testImplementation("junit:junit:4.13.2")
+    implementation(kotlin("stdlib"))
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+}
 
 publishing {
     publications {
         register<MavenPublication>("maven") {
-            groupId = "com.github.zemenai"
-            artifactId = "zemen-ai-sdk-core"
-            version = project.rootProject.version.toString()
             from(components["java"])
+
+            groupId = rootProject.group.toString()
+            artifactId = "zemen-ai-core"
+            version = project.version.toString()
+
+            pom {
+                name.set("Zemen AI Core")
+                description.set(
+                    "Platform-independent Zemen AI SDK core."
+                )
+                url.set(
+                    "https://github.com/hakmoch-a11y/zemen-android"
+                )
+
+                licenses {
+                    license {
+                        name.set("MIT License")
+                        url.set("https://opensource.org/licenses/MIT")
+                    }
+                }
+
+                scm {
+                    url.set(
+                        "https://github.com/hakmoch-a11y/zemen-android"
+                    )
+                    connection.set(
+                        "scm:git:https://github.com/hakmoch-a11y/zemen-android.git"
+                    )
+                    developerConnection.set(
+                        "scm:git:ssh://git@github.com/hakmoch-a11y/zemen-android.git"
+                    )
+                }
+            }
         }
     }
 }
