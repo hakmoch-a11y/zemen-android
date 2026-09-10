@@ -1,0 +1,4 @@
+jdk:
+  - openjdk17
+install:
+  - ./gradlew :android:publishToMavenLocal -PVERSION_NAME=1.0.0
