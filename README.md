@@ -1,6 +1,5 @@
-# Zemen AI Android SDK
+#  Android SDK
 
-The Zemen AI Android SDK is a thin client for third-party mobile applications. The host app keeps ownership of navigation, screens, and business logic. Zemen AI delivers validated generic actions to one host callback.
 
 ## Recommended integration
 
