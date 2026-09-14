@@ -22,7 +22,7 @@ plugins.apply("maven-publish")
 extensions.configure<PublishingExtension> {
     publications {
         register<MavenPublication>("maven") {
-            groupId = "com.github.zemenai"
+            groupId = "com.github.hakmoch-a11y"
             artifactId = "zemen-ai-sdk-core"
             version = project.rootProject.version.toString()
             from(components["java"])
