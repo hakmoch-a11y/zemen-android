@@ -1,5 +1,5 @@
 group = "com.github.zemenai"
-version = providers.gradleProperty("VERSION_NAME").orElse("1.0.0").get()
+version = providers.gradleProperty("VERSION_NAME").orElse("1.0.1").get()
 
 plugins {
     id("com.android.library") version "8.5.2" apply false

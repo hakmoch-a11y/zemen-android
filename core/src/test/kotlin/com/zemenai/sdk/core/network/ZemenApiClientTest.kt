@@ -1,10 +1,10 @@
 package com.zemenai.sdk.core.network
 
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
-import org.junit.Assert.assertEquals
 
 class ZemenApiClientTest {
 
@@ -107,15 +107,12 @@ class ZemenApiClientTest {
         val transport = FakeHttpTransport.respondingWith(200, "not json at all")
         val client = ZemenApiClient("https://api.test", "key", transport)
 
-        var malformedResponseThrown = false
-
         try {
             client.getConfig()
+            fail("Expected ZemenApiException.MalformedResponse")
         } catch (e: ZemenApiException.MalformedResponse) {
-            malformedResponseThrown = true
+            // expected
         }
-
-        assertTrue(malformedResponseThrown)
     }
 
     @Test
@@ -123,14 +120,11 @@ class ZemenApiClientTest {
         val transport = FakeHttpTransport.respondingWith(200, """{"success":true,"timestamp":"now"}""")
         val client = ZemenApiClient("https://api.test", "key", transport)
 
-        var malformedResponseThrown = false
-
         try {
             client.getConfig()
+            fail("Expected ZemenApiException.MalformedResponse")
         } catch (e: ZemenApiException.MalformedResponse) {
-            malformedResponseThrown = true
+            // expected
         }
-
-        assertTrue(malformedResponseThrown)
     }
 }
