@@ -1,5 +1,5 @@
 group = "com.github.hakmoch-a11y"
-version = providers.gradleProperty("VERSION_NAME").orElse("1.0.3").get()
+version = providers.gradleProperty("VERSION_NAME").orElse("1.0.4").get()
 
 plugins {
     id("com.android.library") version "8.5.2" apply false

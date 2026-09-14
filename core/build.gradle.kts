@@ -1,6 +1,7 @@
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.kotlin.dsl.configure
+import org.gradle.api.publish.tasks.GenerateModuleMetadata
 
 plugins {
     kotlin("jvm")
@@ -28,4 +29,9 @@ extensions.configure<PublishingExtension> {
             from(components["java"])
         }
     }
+}
+
+
+tasks.withType<GenerateModuleMetadata>().configureEach {
+    enabled = false
 }

@@ -1,6 +1,7 @@
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.kotlin.dsl.configure
+import org.gradle.api.publish.tasks.GenerateModuleMetadata
 
 extensions.configure<PublishingExtension> {
     publications {
@@ -34,4 +35,9 @@ extensions.configure<PublishingExtension> {
             }
         }
     }
+}
+
+
+tasks.withType<GenerateModuleMetadata>().configureEach {
+    enabled = false
 }
