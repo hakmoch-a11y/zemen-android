@@ -14,6 +14,16 @@ import com.zemenai.sdk.core.model.ZemenConfig
  * `X-Api-Key` header — never a user JWT, never ai-service's internal key.
  * See backend-gateway's README, "Phase 7 addition: the SDK proxy", for
  * the server side of this contract.
+ *
+ * Every public method here is guaranteed to only ever throw
+ * [ZemenApiException] — never a raw [JsonException] or any other
+ * exception type. That guarantee is enforced centrally in
+ * [parseResponseBody] rather than by each individual model's `fromJson`,
+ * so a field a `fromJson` didn't anticipate (missing, wrong type, or a
+ * gateway/SDK contract that has since drifted, as happened once already
+ * with the `/sdk/ask` ACTION shape) surfaces as
+ * [ZemenApiException.MalformedResponse] instead of crashing the host
+ * app — regardless of which endpoint or which model hits it.
  */
 class ZemenApiClient(
     private val baseUrl: String,
@@ -27,7 +37,7 @@ class ZemenApiClient(
             headers = emptyMap(),
             body = null
         ))
-        return ZemenConfig.fromJson(parseDataObject(response))
+        return parseResponseBody(response) { ZemenConfig.fromJson(it) }
     }
 
     suspend fun ask(question: String): ChatAnswer {
@@ -37,7 +47,7 @@ class ZemenApiClient(
             headers = mapOf("Content-Type" to "application/json"),
             body = JsonWriter.write(mapOf("question" to question))
         ))
-        return ChatAnswer.fromJson(parseDataObject(response))
+        return parseResponseBody(response) { ChatAnswer.fromJson(it) }
     }
 
     suspend fun validateAction(action: String, parameters: Map<String, Any?>): ActionValidationResult {
@@ -47,7 +57,7 @@ class ZemenApiClient(
             headers = mapOf("Content-Type" to "application/json"),
             body = JsonWriter.write(mapOf("action" to action, "parameters" to parameters))
         ))
-        return ActionValidationResult.fromJson(parseDataObject(response))
+        return parseResponseBody(response) { ActionValidationResult.fromJson(it) }
     }
 
     private suspend fun executeAuthenticated(request: HttpRequest): HttpResponse {
@@ -85,6 +95,24 @@ class ZemenApiClient(
             ?: throw ZemenApiException.MalformedResponse("Expected a JSON object response")
         return envelope.objectOrNull("data")
             ?: throw ZemenApiException.MalformedResponse("Response missing \"data\" field")
+    }
+
+    // The single point every successful response passes through on its
+    // way to becoming a domain model. `parse` is whichever model's
+    // `fromJson` the caller needs; anything it throws (a missing/
+    // mistyped field, a ZemenApiException raised deliberately by
+    // ChatInterpreter for an unrecognized shape, or anything else) is
+    // normalized to ZemenApiException.MalformedResponse here so it can
+    // never reach the host app as a bare exception.
+    private fun <T> parseResponseBody(response: HttpResponse, parse: (JsonValue.JsonObject) -> T): T {
+        val data = parseDataObject(response)
+        return try {
+            parse(data)
+        } catch (e: ZemenApiException) {
+            throw e
+        } catch (e: Exception) {
+            throw ZemenApiException.MalformedResponse("Unexpected response shape: ${e.message}")
+        }
     }
 
     // backend-gateway's error shape (AllExceptionsFilter, Phase 1):

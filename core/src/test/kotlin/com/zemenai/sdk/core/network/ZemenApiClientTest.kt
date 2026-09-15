@@ -58,6 +58,42 @@ class ZemenApiClientTest {
     }
 
     @Test
+    fun `a source missing a required field throws MalformedResponse instead of crashing`() = runBlocking {
+        // Same bug class as the ACTION/"answer" crash: ChatSource.fromJson
+        // uses requireString internally. Before centralizing exception
+        // safety in parseResponseBody, this would have thrown a raw
+        // JsonException instead of a catchable ZemenApiException.
+        val transport = FakeHttpTransport.respondingWith(
+            200,
+            """{"success":true,"data":{"type":"TEXT","answer":"Here's what I found.","sources":[{"filename":"loans.txt"}]},"timestamp":"now"}"""
+        )
+        val client = ZemenApiClient("https://api.test", "key", transport)
+
+        try {
+            client.ask("Tell me about loans")
+            fail("Expected ZemenApiException.MalformedResponse")
+        } catch (e: ZemenApiException.MalformedResponse) {
+            // expected
+        }
+    }
+
+    @Test
+    fun `a config response missing a required field throws MalformedResponse instead of crashing`() = runBlocking {
+        val transport = FakeHttpTransport.respondingWith(
+            200,
+            """{"success":true,"data":{"applicationId":"app-1"},"timestamp":"now"}"""
+        )
+        val client = ZemenApiClient("https://api.test", "key", transport)
+
+        try {
+            client.getConfig()
+            fail("Expected ZemenApiException.MalformedResponse")
+        } catch (e: ZemenApiException.MalformedResponse) {
+            // expected
+        }
+    }
+
+    @Test
     fun `validateAction posts action and parameters and parses the verdict`() = runBlocking {
         val transport = FakeHttpTransport.respondingWith(
             200,
