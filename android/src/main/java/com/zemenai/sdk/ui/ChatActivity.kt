@@ -16,8 +16,10 @@ import com.zemenai.sdk.ZemenAI
 import com.zemenai.sdk.core.model.ActionOutcome
 import com.zemenai.sdk.core.model.ChatTurn
 import com.zemenai.sdk.core.network.ZemenApiException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import android.util.Log
 
 /**
  * The SDK's built-in chat screen. Deliberately built with plain,
@@ -110,6 +112,18 @@ class ChatActivity : AppCompatActivity() {
             } catch (e: ZemenApiException) {
                 messagesContainer.removeView(loadingView)
                 addSystemMessage(userFacingMessage(e))
+            } catch (e: CancellationException) {
+                // Structured concurrency needs to see this to cancel properly
+                // (e.g. the Activity finishing mid-request) — never swallow it.
+                throw e
+            } catch (t: Throwable) {
+                // Defense in depth: the host app must never crash because of
+                // something in the chat round-trip, even a case not yet
+                // modeled as a specific ZemenApiException (an unexpected
+                // response shape, a future server change, etc.).
+                Log.e("ZemenAI", "Unexpected error handling chat turn", t)
+                messagesContainer.removeView(loadingView)
+                addSystemMessage("Something went wrong. Please try again.")
             }
         }
     }

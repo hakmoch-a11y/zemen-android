@@ -2,6 +2,7 @@ package com.zemenai.sdk.core.model
 
 import com.zemenai.sdk.core.json.JsonParser
 import com.zemenai.sdk.core.json.JsonValue
+import com.zemenai.sdk.core.network.ZemenApiException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -68,41 +69,80 @@ class ActionProposalTest {
 
 class ChatInterpreterTest {
 
+    private fun textAnswer(answer: String, sources: List<ChatSource> = emptyList()) = ChatAnswer.fromJson(
+        JsonParser.parse(
+            """{"type":"TEXT","answer":${JsonWriterEscape.string(answer)},"sources":[]}"""
+        ) as JsonValue.JsonObject
+    ).let { it.copy(sources = sources) }
+
     @Test
     fun `plain prose interprets as Text`() {
-        val answer = ChatAnswer("A savings account earns interest.", emptyList())
+        val answer = textAnswer("A savings account earns interest.")
         val turn = ChatInterpreter.interpret(answer)
         assertTrue(turn is ChatTurn.Text)
         assertEquals("A savings account earns interest.", (turn as ChatTurn.Text).message)
     }
 
     @Test
-    fun `a valid ACTION-shaped answer interprets as Action`() {
-        val answer = ChatAnswer(
-            """{"type":"ACTION","action":"open_transfer","parameters":{"amount":500}}""",
-            emptyList()
-        )
+    fun `backend-gateway's current top-level ACTION shape (no answer field) interprets as Action without crashing`() {
+        // This is the exact shape SdkService.askValidated in backend-gateway
+        // actually returns for a resolved action (Phase 8) — note there is
+        // deliberately NO "answer" key. Before this fix, ChatAnswer.fromJson
+        // required "answer" unconditionally and threw an uncaught
+        // JsonException here, which crashed the host app.
+        val json = JsonParser.parse(
+            """{"type":"ACTION","action":"open_transfer","route":"/transfer","parameters":{"amount":500},"sources":[]}"""
+        ) as JsonValue.JsonObject
+        val answer = ChatAnswer.fromJson(json)
+
         val turn = ChatInterpreter.interpret(answer)
+
+        assertTrue(turn is ChatTurn.Action)
+        assertEquals("open_transfer", (turn as ChatTurn.Action).proposal.action)
+        assertEquals(500.0, turn.proposal.parameters["amount"])
+    }
+
+    @Test
+    fun `legacy ACTION JSON embedded inside the answer string still interprets as Action`() {
+        val json = JsonParser.parse(
+            """{"type":"TEXT","answer":"{\"type\":\"ACTION\",\"action\":\"open_transfer\",\"parameters\":{\"amount\":500}}","sources":[]}"""
+        ) as JsonValue.JsonObject
+        val turn = ChatInterpreter.interpret(ChatAnswer.fromJson(json))
+
         assertTrue(turn is ChatTurn.Action)
         assertEquals("open_transfer", (turn as ChatTurn.Action).proposal.action)
     }
 
     @Test
     fun `malformed JSON in the answer falls back to Text rather than throwing`() {
-        val answer = ChatAnswer("{not valid json at all", emptyList())
+        val answer = textAnswer("{not valid json at all")
         val turn = ChatInterpreter.interpret(answer)
         assertTrue(turn is ChatTurn.Text)
+    }
+
+    @Test(expected = ZemenApiException.MalformedResponse::class)
+    fun `neither an action nor an answer field raises MalformedResponse instead of crashing`() {
+        val json = JsonParser.parse("""{"type":"TEXT","sources":[]}""") as JsonValue.JsonObject
+        ChatInterpreter.interpret(ChatAnswer.fromJson(json))
     }
 
     @Test
     fun `sources are preserved through interpretation for both Text and Action turns`() {
         val source = ChatSource("loans.txt", "content", 0.9)
-        val textTurn = ChatInterpreter.interpret(ChatAnswer("prose", listOf(source)))
+        val textTurn = ChatInterpreter.interpret(textAnswer("prose", listOf(source)))
         assertEquals(listOf(source), (textTurn as ChatTurn.Text).sources)
 
-        val actionTurn = ChatInterpreter.interpret(
-            ChatAnswer("""{"type":"ACTION","action":"x","parameters":{}}""", listOf(source))
-        )
+        val actionJson = JsonParser.parse(
+            """{"type":"ACTION","action":"x","parameters":{},"sources":[]}"""
+        ) as JsonValue.JsonObject
+        val actionTurn = ChatInterpreter.interpret(ChatAnswer.fromJson(actionJson).copy(sources = listOf(source)))
         assertEquals(listOf(source), (actionTurn as ChatTurn.Action).sources)
     }
+}
+
+/** Minimal helper so test literals can safely embed arbitrary strings as
+ * JSON string values without pulling in JsonWriter for a handful of tests. */
+private object JsonWriterEscape {
+    fun string(value: String): String =
+        "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 }
