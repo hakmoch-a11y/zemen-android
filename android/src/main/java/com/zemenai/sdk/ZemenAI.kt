@@ -135,7 +135,11 @@ object ZemenAI {
     fun getChatIntent(context: Context): Intent = Intent(context, ChatActivity::class.java)
 
     internal fun requireCore(): ZemenAiCore = core
-        ?: error("ZemenAI.initialize(context, apiKey) must be called before using the SDK")
+        ?: throw ZemenApiException.ConfigurationError(
+            "ZemenAI.initialize(context, apiKey) must be called before using the SDK. " +
+                "Common cause: the Application class that calls initialize() isn't registered " +
+                "with android:name in AndroidManifest.xml, so it never ran."
+        )
 
     private fun restoreCachedConfig(context: Context) {
         if (cachedConfig != null) return

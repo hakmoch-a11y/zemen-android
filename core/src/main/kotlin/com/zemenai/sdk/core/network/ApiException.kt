@@ -22,4 +22,14 @@ sealed class ZemenApiException(message: String) : Exception(message) {
     /** The response body wasn't valid JSON, or didn't match the shape
      * expected for this call. */
     class MalformedResponse(message: String) : ZemenApiException(message)
+
+    /** The SDK was used before [com.zemenai.sdk.ZemenAI.initialize] was
+     * called — e.g. a host app forgot to register its Application class in
+     * AndroidManifest.xml (the exact real-world failure this type exists
+     * to catch), or a screen ran before app startup finished initializing
+     * Zemen. This is a developer-integration mistake, not a network or
+     * server condition, so it's modeled separately: a host app should
+     * never need to guess whether a caught [ZemenApiException] means "the
+     * network is down" or "you forgot a setup step". */
+    class ConfigurationError(message: String) : ZemenApiException(message)
 }

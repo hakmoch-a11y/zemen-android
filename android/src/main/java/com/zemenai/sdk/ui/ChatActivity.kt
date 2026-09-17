@@ -155,6 +155,7 @@ class ChatActivity : AppCompatActivity() {
         is ZemenApiException.Unauthorized -> "This app isn't configured correctly. Please contact support."
         is ZemenApiException.HttpError -> "Something went wrong. Please try again."
         is ZemenApiException.MalformedResponse -> "Something went wrong. Please try again."
+        is ZemenApiException.ConfigurationError -> "This app isn't set up correctly yet. Please contact support."
     }
 
     private fun addUserMessage(text: String) =
